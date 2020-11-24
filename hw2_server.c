@@ -13,19 +13,21 @@
 #define SERV_PORT 8080
 #define LISTENQ 5
 
-
+int num_game=0;
 int listenfd,connfd[MAXMEM];
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 char user[MAXMEM][NAMELEN];
+char password[100][100];
 void Quit();
 void rcv_snd(int n);
-void Game(int p1,int p2);
-void displayboard();
-int move(int palyer,char op,char ret);
+void Game(int p1,int p2,int num);
+void displayboard(int num);
+int move(int palyer,char op,char ret,int num);
 int row=3,col=3;
-char iswin(char arr[row][col]);
-static int IsFull(char arr[row][row]);
+char iswin(char array[10][row][col],int num);
+static int IsFull(char arr[10][row][row],int num);
 char arr[3][3];
+char array[10][3][3];
 
 
 int main()
@@ -120,6 +122,7 @@ void rcv_snd(int n)
 	int retval;
 
 //獲得client的名字
+    
 	int length;
 	length = recv(connfd[n], name, NAMELEN, 0);
 	if(length>0) {
@@ -215,7 +218,13 @@ void rcv_snd(int n)
 								printf("Starting the game...\n");
 								send(connfd[n], "<Server> Starting the game...\n", strlen("<Server> Starting the game...\n"),0);
 								send(connfd[i], "<Server> Starting the game...\n", strlen("<Server> Starting the game...\n"),0);
-								Game(n,i);
+								num_game++;
+								if(num_game==1){
+								  Game(n,i,num_game);
+								}
+								else if(num_game>1){
+								  Game(n,i,num_game);
+								}
 								//memset(message, '\0', sizeof(message));
 							}
 //No取消邀請
@@ -261,33 +270,40 @@ void rcv_snd(int n)
 	}
 }
 
-void Game(int a,int b){
-  int p1=a;
-  int p2=b;
-  int j,k;
+void Game(int p1,int p2,int num){
+  int j,k,z;
   int col=3;
   int row=3;
   char ans=0;
   char ret=0;
 
   //initial the game
-  for(j=0;j<row;j++){
-	for(k=0;k<col;k++){
-	  arr[j][k]='N';
+  //for(z=0;z<10;z++){
+    for(j=0;j<row;j++){
+	  for(k=0;k<col;k++){
+	    array[num][j][k]='N';
+	  }
+    }
+  //}
+
+  for(z=0;z<10;z++){
+    if(z==num){
+	  printf("第%d個連線遊戲\n",z);
+	  displayboard(z);
 	}
   }
-  displayboard();
+  //displayboard();
   
   while(1){
 	//player1 playing
-	ans=move(p1,'O',ret);
+	ans=move(p1,'O',ret,num);
 	if(ans!=' '){
 	  break;
 	}
 	send(connfd[p1], "<Server> waiting...\n", strlen("<Server> waiting...\n"),0);
 	
 	//player2 playing
-	ans=move(p2,'X',ret);
+	ans=move(p2,'X',ret,num);
 	if(ans!=' '){
 	  break;
 	}
@@ -307,11 +323,11 @@ void Game(int a,int b){
   }  
 } 
 
-void displayboard(){
+void displayboard(int num){
   int l=0,m=0;
   for(l=0; l<row; l++){                                //遍歷二維陣列
 	for(m=0; m<col; m++){
-		printf(" %c ", arr[l][m]);
+		printf(" %c ", array[num][l][m]);
 		if(m<col-1)                                 //邊界處不需要棋盤邊框      
 			printf("|");                           
 	}
@@ -327,36 +343,36 @@ void displayboard(){
   }
 }
 
-char iswin(char arr[row][col]){         //判斷勝負
+char iswin(char array[10][row][col],int num){         //判斷勝負
   int j=0;
   for(j=0; j<row; j++){                                //判斷行  是否能勝利
-	if(arr[j][0]==arr[j][1] && arr[j][1]==arr[j][2] && arr[j][0]!='N'){
-	  return arr[j][0];                           //若三子相同,且不能為空，返回元素內值
+	if(array[num][j][0]==array[num][j][1] && array[num][j][1]==array[num][j][2] && array[num][j][0]!='N'){
+	  return array[num][j][0];                           //若三子相同,且不能為空，返回元素內值
 	}
   } 
   for(j=0; j<col; j++){                                //判斷列  是否能勝利
-    if(arr[0][j]==arr[1][j] && arr[1][j]==arr[2][j] && arr[1][j]!='N'){
-	  return arr[1][j];
+    if(array[num][0][j]==array[num][1][j] && array[num][1][j]==array[num][2][j] && array[num][1][j]!='N'){
+	  return array[num][1][j];
 	}
   }
-  if(arr[0][0]==arr[1][1] && arr[1][1]==arr[2][2] && arr[1][1] != 'N'){   //判斷正對角線能否勝利
-	return arr[1][1];
+  if(array[num][0][0]==array[num][1][1] && array[num][1][1]==array[num][2][2] && array[num][1][1] != 'N'){   //判斷正對角線能否勝利
+	return array[num][1][1];
   }
-  if(arr[0][2]==arr[1][1] && arr[1][1]==arr[2][0] && arr[1][1] != 'N'){   //判斷反對角線能否勝利
-	return arr[1][1];
+  if(array[num][0][2]==array[num][1][1] && array[num][1][1]==array[num][2][0] && array[num][1][1] != 'N'){   //判斷反對角線能否勝利
+	return array[num][1][1];
   }
-  if(IsFull(arr)){                                          //判定平局
+  if(IsFull(array,num)){                                          //判定平局
 	return 'Q';
   }
   return  ' ';                                     //繼續
 }
 
-static int IsFull(char arr[row][col]){  //不為介面函式，不需要放入game.h，僅在此使用，無法進行test.c中呼叫
+static int IsFull(char arr[10][row][col],int num){  //不為介面函式，不需要放入game.h，僅在此使用，無法進行test.c中呼叫
   int l = 0;
   int m = 0;
   for(l=0; l<row; l++){                                //遍歷二維陣列
     for(m=0; m<col; m++){
-	  if(arr[l][m] == 'N'){                        //判斷是否仍有空值
+	  if(array[num][l][m] == 'N'){                        //判斷是否仍有空值
 		return 0;                               //有空值返回0
 	  }
 	}
@@ -364,7 +380,7 @@ static int IsFull(char arr[row][col]){  //不為介面函式，不需要放入ga
   return 1;                                           //無空值返回1
 }
 
-int move(int player,char op,char ret){ //傳現在是哪個player給他跟他代表的符號（O or X)
+int move(int player,char op,char ret,int num){ //傳現在是哪個player給他跟他代表的符號（O or X)
   int l,m;
   int length;
   int x,y;
@@ -380,7 +396,7 @@ int move(int player,char op,char ret){ //傳現在是哪個player給他跟他代
     chosen[length]=0;
     x=((int)chosen[0])-48;//minus 0 ASCII
     y=((int)chosen[2])-48;
-	if(arr[x][y]=='N'){//此格尚未填過
+	if(array[num][x][y]=='N'){//此格尚未填過
 	  break;
 	}
 	if(x>2||x<0||y>2||y<0){
@@ -395,13 +411,14 @@ int move(int player,char op,char ret){ //傳現在是哪個player給他跟他代
   printf("%d %d\n",x,y);
   for(l=0;l<3;l++){
     for(m=0;m<3;m++){
-      if(l==x&&m==y&&arr[l][m]=='N'){
-    	arr[l][m]=op;
+      if(l==x&&m==y&&array[num][l][m]=='N'){
+    	array[num][l][m]=op;
 	  }
 	}
   }
-  displayboard();
-  ret=iswin(arr);
+  printf("第%d個連線遊戲\n",num);
+  displayboard(num);
+  ret=iswin(array,num);
   if(ret != ' '){                //如果此二維陣列內元素未定義，即為空，在執行下面的電腦走
     printf("遊戲結束！\n");
     return ret;
